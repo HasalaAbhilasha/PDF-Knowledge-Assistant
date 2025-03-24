@@ -30,6 +30,10 @@ st.set_page_config(
 if 'theme' not in st.session_state:
     st.session_state.theme = 'light'
 
+# Theme toggle function
+def toggle_theme():
+    st.session_state.theme = 'dark' if st.session_state.theme == 'light' else 'light'
+
 # Custom CSS
 def get_custom_css(theme):
     if theme == 'dark':
@@ -42,6 +46,8 @@ def get_custom_css(theme):
             .stApp {
                 max-width: 1200px;
                 margin: 0 auto;
+                background-color: #0e1117;
+                color: #fafafa;
             }
             .css-18e3th9 {
                 padding-top: 2rem;
@@ -53,6 +59,9 @@ def get_custom_css(theme):
                 padding: 0.5rem 1rem;
                 font-weight: bold;
             }
+            .stButton button:hover {
+                background-color: #3a7be6;
+            }
             .chat-message {
                 padding: 1rem;
                 border-radius: 0.5rem;
@@ -62,9 +71,11 @@ def get_custom_css(theme):
             }
             .chat-message.user {
                 background-color: #1c2535;
+                border: 1px solid #2d3748;
             }
             .chat-message.assistant {
                 background-color: #262730;
+                border: 1px solid #2d3748;
             }
             .chat-message .avatar {
                 width: 40px;
@@ -86,6 +97,7 @@ def get_custom_css(theme):
             }
             .chat-message .content {
                 width: 80%;
+                color: #fafafa;
             }
             h1, h2, h3 {
                 color: #4f8bf9;
@@ -97,6 +109,7 @@ def get_custom_css(theme):
                 box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
                 margin-bottom: 1rem;
                 color: #fafafa;
+                border: 1px solid #2d3748;
             }
             .stProgress .st-bo {
                 background-color: #4f8bf9;
@@ -108,17 +121,37 @@ def get_custom_css(theme):
                 box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
                 height: 100%;
                 color: #fafafa;
+                border: 1px solid #2d3748;
             }
             .stTextInput > div {
                 background-color: #262730;
                 color: #fafafa;
                 border-radius: 0.5rem;
+                border: 1px solid #2d3748;
             }
             .stTextInput input {
                 color: #fafafa;
             }
             .sidebar .sidebar-content {
                 background-color: #0e1117;
+            }
+            .stMarkdown {
+                color: #fafafa;
+            }
+            .stSelectbox > div {
+                background-color: #262730;
+                color: #fafafa;
+                border-radius: 0.5rem;
+                border: 1px solid #2d3748;
+            }
+            .stSelectbox select {
+                color: #fafafa;
+            }
+            .stFileUploader > div {
+                background-color: #262730;
+                color: #fafafa;
+                border-radius: 0.5rem;
+                border: 1px solid #2d3748;
             }
         </style>
         """
@@ -131,6 +164,7 @@ def get_custom_css(theme):
             .stApp {
                 max-width: 1200px;
                 margin: 0 auto;
+                background-color: #f5f7f9;
             }
             .css-18e3th9 {
                 padding-top: 2rem;
@@ -142,6 +176,9 @@ def get_custom_css(theme):
                 padding: 0.5rem 1rem;
                 font-weight: bold;
             }
+            .stButton button:hover {
+                background-color: #3a7be6;
+            }
             .chat-message {
                 padding: 1rem;
                 border-radius: 0.5rem;
@@ -151,9 +188,11 @@ def get_custom_css(theme):
             }
             .chat-message.user {
                 background-color: #e6f3ff;
+                border: 1px solid #cbd5e0;
             }
             .chat-message.assistant {
                 background-color: #f0f2f6;
+                border: 1px solid #cbd5e0;
             }
             .chat-message .avatar {
                 width: 40px;
@@ -175,6 +214,7 @@ def get_custom_css(theme):
             }
             .chat-message .content {
                 width: 80%;
+                color: #1a202c;
             }
             h1, h2, h3 {
                 color: #1e3a8a;
@@ -185,6 +225,7 @@ def get_custom_css(theme):
                 border-radius: 0.5rem;
                 box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
                 margin-bottom: 1rem;
+                border: 1px solid #cbd5e0;
             }
             .stProgress .st-bo {
                 background-color: #4f8bf9;
@@ -195,10 +236,39 @@ def get_custom_css(theme):
                 border-radius: 0.5rem;
                 box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
                 height: 100%;
+                border: 1px solid #cbd5e0;
+            }
+            .stTextInput > div {
+                background-color: white;
+                color: #1a202c;
+                border-radius: 0.5rem;
+                border: 1px solid #cbd5e0;
+            }
+            .stTextInput input {
+                color: #1a202c;
+            }
+            .stMarkdown {
+                color: #1a202c;
+            }
+            .stSelectbox > div {
+                background-color: white;
+                color: #1a202c;
+                border-radius: 0.5rem;
+                border: 1px solid #cbd5e0;
+            }
+            .stSelectbox select {
+                color: #1a202c;
+            }
+            .stFileUploader > div {
+                background-color: white;
+                color: #1a202c;
+                border-radius: 0.5rem;
+                border: 1px solid #cbd5e0;
             }
         </style>
         """
 
+# Apply theme CSS
 st.markdown(get_custom_css(st.session_state.theme), unsafe_allow_html=True)
 
 # Initialize session state variables
@@ -335,14 +405,6 @@ def display_chat_history():
                 else:
                     st.error("Thank you for your feedback. We'll work to improve our responses.")
 
-def toggle_theme():
-    """Toggle between light and dark theme"""
-    if st.session_state.theme == 'light':
-        st.session_state.theme = 'dark'
-    else:
-        st.session_state.theme = 'light'
-    st.rerun()
-
 def process_pdf(uploaded_file):
     """Process an uploaded PDF file"""
     with st.spinner("Processing PDF, please wait..."):
@@ -418,12 +480,9 @@ with st.sidebar:
     st.markdown("---")
     
     # Theme toggle
-    theme_col1, theme_col2 = st.columns([3, 1])
-    with theme_col1:
-        st.write("Theme:")
-    with theme_col2:
-        if st.button("🌓" if st.session_state.theme == 'light' else "☀️"):
-            toggle_theme()
+    if st.button("🌙 Dark Mode" if st.session_state.theme == 'light' else "☀️ Light Mode", use_container_width=True):
+        toggle_theme()
+        st.rerun()
     
     st.markdown("---")
     
