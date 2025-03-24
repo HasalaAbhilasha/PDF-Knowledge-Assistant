@@ -456,13 +456,6 @@ with st.sidebar:
     st.title("PDF Knowledge Assistant")
     st.markdown("---")
     
-    # Theme toggle
-    if st.button("🌙 Dark Mode" if st.session_state.theme == 'light' else "☀️ Light Mode", use_container_width=True):
-        toggle_theme()
-        st.rerun()
-    
-    st.markdown("---")
-    
     st.subheader("Upload your PDF")
     uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
     
@@ -509,9 +502,6 @@ with st.sidebar:
             st.session_state.highlighted_pdfs = {}
             st.session_state.pdf_data = None
             st.rerun()
-    
-    st.markdown("---")
-    st.caption("Made with ❤️ using Streamlit and LangChain")
 
 # Main content
 if not st.session_state.file_processed:
