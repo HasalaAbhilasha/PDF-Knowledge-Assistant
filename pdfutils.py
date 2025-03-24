@@ -4,8 +4,9 @@ import os
 from PyPDF2 import PdfReader, PdfWriter
 from fitz import open as fitz_open  # PyMuPDF
 import difflib
+import re
 
-def find_page_and_highlight(pdf_path, search_text, threshold=0.8):
+def find_page_and_highlight(pdf_path, search_text, threshold=0.6):
     """
     Find the best matches for search_text in the PDF and return a highlighted PDF.
     
@@ -21,24 +22,36 @@ def find_page_and_highlight(pdf_path, search_text, threshold=0.8):
     pdf_document = fitz_open(pdf_path)
     matching_pages = []
     
+    # Clean and normalize the search text
+    search_text = re.sub(r'\s+', ' ', search_text).strip()
+    
     # Search each page for text
     for page_num, page in enumerate(pdf_document):
         text = page.get_text()
         
-        # Split text into sentences (approximate)
-        sentences = [s.strip() for s in text.split('.') if s.strip()]
+        # Split text into paragraphs (more natural chunks)
+        paragraphs = [p.strip() for p in text.split('\n\n') if p.strip()]
         
-        # Find best matching sentences using fuzzy matching
-        for sentence in sentences:
-            similarity = difflib.SequenceMatcher(None, search_text, sentence).ratio()
+        # Find best matching paragraphs using fuzzy matching
+        for paragraph in paragraphs:
+            # Clean and normalize paragraph text
+            paragraph = re.sub(r'\s+', ' ', paragraph).strip()
+            
+            # Calculate similarity
+            similarity = difflib.SequenceMatcher(None, search_text.lower(), paragraph.lower()).ratio()
+            
             if similarity > threshold:
                 # Found a match, highlight it
                 matching_pages.append(page_num)
-                text_instances = page.search_for(sentence)
                 
-                # Add highlight
+                # Search for the paragraph in the page
+                text_instances = page.search_for(paragraph)
+                
+                # Add highlight with better visibility
                 for inst in text_instances:
                     highlight = page.add_highlight_annot(inst)
+                    highlight.set_colors(stroke=(1, 1, 0))  # Yellow highlight
+                    highlight.set_opacity(0.3)  # Semi-transparent
                     highlight.update()
                 break
     
@@ -58,7 +71,7 @@ def get_pdf_download_link(pdf_path, filename="highlighted.pdf"):
         pdf_bytes = f.read()
     
     b64 = base64.b64encode(pdf_bytes).decode()
-    href = f'<a href="data:application/pdf;base64,{b64}" download="{filename}" target="_blank">View Highlighted PDF</a>'
+    href = f'<a href="data:application/pdf;base64,{b64}" download="{filename}" target="_blank" class="highlighted-pdf-link">View Highlighted PDF</a>'
     return href
 
 def cleanup_temp_pdf(pdf_path):

@@ -338,72 +338,17 @@ def answer_question(vector_store, question):
     docs = vector_store.similarity_search(question)
     answer = chain.run(input_documents=docs, question=question)
     
-    # Clean up previous highlighted PDFs
-    if question in st.session_state.highlighted_pdfs and os.path.exists(st.session_state.highlighted_pdfs[question]):
-        cleanup_temp_pdf(st.session_state.highlighted_pdfs[question])
+    # Get the relevant text chunks
+    relevant_chunks = [doc.page_content for doc in docs]
     
-    # Generate highlighted PDF for reference
-    if st.session_state.pdf_path and os.path.exists(st.session_state.pdf_path):
-        try:
-            highlighted_pdf, pages = find_page_and_highlight(st.session_state.pdf_path, answer)
-            if highlighted_pdf and os.path.exists(highlighted_pdf):
-                st.session_state.highlighted_pdfs[question] = highlighted_pdf
-                return answer, highlighted_pdf, pages
-        except Exception as e:
-            st.warning(f"Could not highlight PDF: {e}")
-    
-    return answer, None, []
+    return answer, None, [], relevant_chunks
 
 def display_chat_history():
-    """Display the chat history in a nice format"""
-    for i, message in enumerate(st.session_state.chat_history):
-        if message["role"] == "user":
-            st.markdown(f"""
-            <div class="chat-message user">
-                <div class="avatar user-avatar">👤</div>
-                <div class="content">
-                    <p><strong>You:</strong> {message["content"]}</p>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.markdown(f"""
-            <div class="chat-message assistant">
-                <div class="avatar assistant-avatar">🤖</div>
-                <div class="content">
-                    <p><strong>Assistant:</strong> {message["content"]["answer"]}</p>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Display PDF highlight link if available
-            if "highlighted_pdf" in message["content"] and message["content"]["highlighted_pdf"] and os.path.exists(message["content"]["highlighted_pdf"]):
-                st.markdown(
-                    get_pdf_download_link(
-                        message["content"]["highlighted_pdf"], 
-                        f"highlighted_{i}.pdf"
-                    ),
-                    unsafe_allow_html=True
-                )
-                if "pages" in message["content"] and message["content"]["pages"]:
-                    st.info(f'Found on page(s): {", ".join(str(p+1) for p in message["content"]["pages"])}')
-            
-            # Add feedback buttons under each AI response
-            if i not in st.session_state.feedback:
-                col1, col2, col3 = st.columns([1, 1, 10])
-                with col1:
-                    if st.button("👍", key=f"thumbs_up_{i}"):
-                        st.session_state.feedback[i] = "positive"
-                        st.rerun()
-                with col2:
-                    if st.button("👎", key=f"thumbs_down_{i}"):
-                        st.session_state.feedback[i] = "negative"
-                        st.rerun()
-            else:
-                if st.session_state.feedback[i] == "positive":
-                    st.success("Thank you for your positive feedback!")
-                else:
-                    st.error("Thank you for your feedback. We'll work to improve our responses.")
+    """Display the chat history"""
+    for message in st.session_state.chat_history:
+        is_user = message["role"] == "user"
+        content = message["content"]["answer"] if not is_user else message["content"]
+        display_chat_message(content, is_user)
 
 def process_pdf(uploaded_file):
     """Process an uploaded PDF file"""
@@ -472,6 +417,38 @@ def export_chat_history():
     b64 = base64.b64encode(json_str.encode()).decode()
     href = f'<a href="data:application/json;base64,{b64}" download="{filename}">Download Chat History</a>'
     return href
+
+def display_chat_message(message, is_user=False):
+    """Display a chat message with appropriate styling"""
+    avatar = "👤" if is_user else "🤖"
+    avatar_class = "user-avatar" if is_user else "assistant-avatar"
+    message_class = "user" if is_user else "assistant"
+    
+    st.markdown(f"""
+        <div class="chat-message {message_class}">
+            <div class="avatar {avatar_class}">{avatar}</div>
+            <div class="content">{message}</div>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # Add "Show Source" button for assistant messages if we have a PDF
+    if not is_user and st.session_state.pdf_path and st.session_state.file_processed:
+        if st.button("📖 Show Source", key=f"source_{len(st.session_state.chat_history)}"):
+            # Get the last question from chat history
+            last_question = next((msg for msg in reversed(st.session_state.chat_history) if msg["role"] == "user"), None)
+            if last_question:
+                # Find the corresponding assistant message
+                for msg in reversed(st.session_state.chat_history):
+                    if msg["role"] == "assistant" and "relevant_chunks" in msg["content"]:
+                        st.markdown("### 📚 Source Text:")
+                        for i, chunk in enumerate(msg["content"]["relevant_chunks"], 1):
+                            st.markdown(f"""
+                            <div class="info-card">
+                                <p><strong>Source {i}:</strong></p>
+                                <p>{chunk}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        break
 
 # Sidebar
 with st.sidebar:
@@ -602,14 +579,15 @@ else:
             # Get answer
             with st.spinner("Thinking..."):
                 try:
-                    answer, highlighted_pdf, pages = answer_question(st.session_state.vector_store, user_question)
+                    answer, highlighted_pdf, pages, relevant_chunks = answer_question(st.session_state.vector_store, user_question)
                     # Add assistant answer to chat history
                     st.session_state.chat_history.append({
                         "role": "assistant", 
                         "content": {
                             "answer": answer,
                             "highlighted_pdf": highlighted_pdf,
-                            "pages": pages
+                            "pages": pages,
+                            "relevant_chunks": relevant_chunks
                         }
                     })
                 except Exception as e:
